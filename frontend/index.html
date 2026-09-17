@@ -918,14 +918,68 @@ function endWorkout(){
   }
 }
 
-function saveActivity(){
-  const name=document.getElementById('act-name').value||'Interval workout';
-  const record={name,date:new Date().toISOString(),distanceKm:parseFloat((totDistM/1000).toFixed(2)),durationSec:totEl,calories:Math.round(totEl*0.13),avgPaceSec:totDistM>0?Math.round(totEl/(totDistM/1000)):null,targetDistM:targetM,segments:segHist,route:gpsPoints.map(p=>({lat:+p.lat.toFixed(6),lon:+p.lon.toFixed(6)}))};
-  console.log('POST /api/activities',record);
-  const toast=document.getElementById('saved-toast');
-  toast.style.display='block';
-  toast.textContent=`✓ Saved "${name}" — ${record.distanceKm} km · ${record.route.length} GPS pts`;
-  setTimeout(()=>{toast.style.display='none';goTo('s-home');},2200);
+async function saveActivity(){
+  const name = document.getElementById('act-name').value || 'Interval workout';
+
+  const record = {
+    name,
+    date: new Date().toISOString(),
+    distanceKm: parseFloat((totDistM / 1000).toFixed(2)),
+    durationSec: totEl,
+    calories: Math.round(totEl * 0.13),
+    avgPaceSec: totDistM > 0
+      ? Math.round(totEl / (totDistM / 1000))
+      : null,
+    targetDistM: targetM,
+    segments: segHist,
+    route: gpsPoints.map(p => ({
+      lat: +p.lat.toFixed(6),
+      lon: +p.lon.toFixed(6)
+    }))
+  };
+
+  const toast = document.getElementById('saved-toast');
+  const saveButton = document.querySelector('#s-summary .btn-primary');
+
+  try {
+    saveButton.disabled = true;
+    saveButton.textContent = 'SAVING...';
+
+    const res = await fetch(
+      'https://stridesync-production.up.railway.app/api/activities',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(record)
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to save activity');
+    }
+
+    toast.style.display = 'block';
+    toast.textContent =
+      `✓ Saved "${name}" — ${record.distanceKm} km · ${record.route.length} GPS pts`;
+
+    setTimeout(() => {
+      toast.style.display = 'none';
+      goTo('s-home');
+    }, 2200);
+
+  } catch (err) {
+    console.error('Save activity error:', err);
+
+    toast.style.display = 'block';
+    toast.textContent = `✕ Failed to save activity: ${err.message}`;
+
+    saveButton.disabled = false;
+    saveButton.textContent = '☁ SAVE TO CLOUD';
+  }
 }
 
 /* ══════════════════════════════════════════════
