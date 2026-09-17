@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#0a0a0a"/>
+<title>StrideSync</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600;700;800;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #0a0a0a;
+  --bg2: #111111;
+  --bg3: #181818;
+  --bg4: #222222;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.14);
+  --text: #f0f0f0;
+  --text2: #888;
+  --text3: #555;
+  --run: #3b9eff;
+  --run-dim: rgba(59,158,255,0.12);
+  --run-glow: rgba(59,158,255,0.25);
+  --walk: #6fcf8a;
+  --walk-dim: rgba(111,207,138,0.1);
+  --walk-glow: rgba(111,207,138,0.2);
+  --danger: #ff4444;
+  --danger-dim: rgba(255,68,68,0.12);
+  --gold: #f5c842;
+  --radius: 12px;
+  --font-display: 'Barlow Condensed', sans-serif;
+  --font-body: 'Barlow', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+body { font-family: var(--font-body); color: var(--text); -webkit-font-smoothing: antialiased; touch-action: manipulation; }
+
+.app {
+  width: 100%;
+  max-width: 430px;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0 auto;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── SCREENS ───────────────────────────────────── */
+.screen { display: none; flex-direction: column; height: 100%; overflow: hidden; }
+.screen.active { display: flex; animation: fadeIn .22s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── TOPBAR ───────────────────────────────────── */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.topbar-logo {
+  font-family: var(--font-display);
+  font-size: 22px; font-weight: 800; letter-spacing: .04em;
+  color: var(--text);
+}
+.topbar-logo span { color: var(--run); }
+.topbar-date { font-size: 12px; color: var(--text2); font-weight: 400; }
+.topbar-back {
+  background: var(--bg3); border: 1px solid var(--border2);
+  color: var(--text2); font-family: var(--font-body); font-size: 12px;
+  padding: 6px 12px; border-radius: 6px; cursor: pointer;
+  display: flex; align-items: center; gap: 5px;
+}
+.topbar-back:active { opacity: .7; }
+.topbar-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; letter-spacing: .05em; color: var(--text); }
+
+/* ── SCROLL CONTENT ───────────────────────────── */
+.scroll { flex: 1; overflow-y: auto; padding: 18px 20px 100px; -webkit-overflow-scrolling: touch; }
+.scroll::-webkit-scrollbar { display: none; }
+
+/* ── SECTION LABEL ────────────────────────────── */
+.section-label {
+  font-family: var(--font-display); font-size: 11px; font-weight: 700;
+  letter-spacing: .12em; color: var(--text3); text-transform: uppercase;
+  margin: 22px 0 10px;
+}
+.section-label:first-child { margin-top: 0; }
+
+/* ── STAT GRID ────────────────────────────────── */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+.stat-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 14px 12px;
+}
+.stat-card .label { font-size: 11px; color: var(--text3); font-weight: 500; margin-bottom: 4px; letter-spacing: .04em; }
+.stat-card .value {
+  font-family: var(--font-display); font-size: 28px; font-weight: 800;
+  color: var(--text); letter-spacing: .01em; line-height: 1;
+}
+.stat-card .unit { font-size: 12px; color: var(--text2); font-weight: 400; margin-left: 2px; }
+.stat-card.accent-run { border-color: rgba(59,158,255,0.3); }
+.stat-card.accent-walk { border-color: rgba(111,207,138,0.3); }
+
+/* ── ACTIVITY LIST ───────────────────────────── */
+.act-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.act-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0; background: var(--bg3);
+}
+.act-icon.r { background: var(--run-dim); color: var(--run); }
+.act-icon.w { background: var(--walk-dim); color: var(--walk); }
+.act-info { flex: 1; min-width: 0; }
+.act-name { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.act-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.act-dist { font-family: var(--font-display); font-size: 18px; font-weight: 800; color: var(--text); }
+
+/* ── BUTTONS ─────────────────────────────────── */
+.btn-primary {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 16px; background: var(--run);
+  color: #fff; border: none; border-radius: var(--radius);
+  font-family: var(--font-display); font-size: 17px; font-weight: 800;
+  letter-spacing: .06em; cursor: pointer; margin-top: 8px;
+  transition: opacity .15s, transform .12s;
+}
+.btn-primary:active { opacity: .85; transform: scale(.98); }
+.btn-secondary {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 13px; background: transparent;
+  color: var(--text2); border: 1px solid var(--border2); border-radius: var(--radius);
+  font-family: var(--font-body); font-size: 13px; font-weight: 500;
+  cursor: pointer; margin-top: 6px;
+  transition: background .15s;
+}
+.btn-secondary:active { background: var(--bg3); }
+.btn-danger {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 13px; background: var(--danger-dim);
+  color: var(--danger); border: 1px solid rgba(255,68,68,0.3); border-radius: var(--radius);
+  font-family: var(--font-display); font-size: 15px; font-weight: 700;
+  letter-spacing: .05em; cursor: pointer; margin-top: 6px;
+  transition: background .15s;
+}
+.btn-danger:active { background: rgba(255,68,68,0.25); }
+
+/* ── FORM ELEMENTS ───────────────────────────── */
+.field-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.field-row label { font-size: 12px; color: var(--text2); white-space: nowrap; min-width: 110px; }
+.field-row input {
+  flex: 1; padding: 10px 12px;
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 8px; color: var(--text); font-size: 14px;
+  font-family: var(--font-body); outline: none;
+  transition: border-color .15s;
+}
+.field-row input:focus { border-color: var(--run); }
+
+.add-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-bottom: 8px; }
+.add-row select, .add-row input {
+  padding: 10px 12px; background: var(--bg3);
+  border: 1px solid var(--border2); border-radius: 8px;
+  color: var(--text); font-size: 13px; font-family: var(--font-body); outline: none;
+  transition: border-color .15s;
+}
+.add-row select { cursor: pointer; }
+.add-row select:focus, .add-row input:focus { border-color: var(--run); }
+.add-row select option { background: var(--bg3); }
+.add-btn {
+  width: 40px; height: 40px; background: var(--run);
+  border: none; border-radius: 8px; color: #fff;
+  font-size: 22px; cursor: pointer; display: flex;
+  align-items: center; justify-content: center;
+  font-weight: 300; transition: opacity .15s;
+}
+.add-btn:active { opacity: .8; }
+
+/* ── INTERVAL ITEMS ──────────────────────────── */
+.iv-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 12px; background: var(--bg2);
+  border: 1px solid var(--border); border-radius: 10px; margin-bottom: 6px;
+  animation: slideIn .18s ease;
+}
+@keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+.iv-badge {
+  padding: 4px 10px; border-radius: 20px;
+  font-family: var(--font-display); font-size: 12px; font-weight: 700;
+  letter-spacing: .06em; flex-shrink: 0;
+}
+.iv-badge.r { background: var(--run-dim); color: var(--run); }
+.iv-badge.w { background: var(--walk-dim); color: var(--walk); }
+.iv-dist { flex: 1; font-size: 14px; font-weight: 500; color: var(--text); }
+.iv-rm {
+  background: none; border: none; color: var(--text3);
+  cursor: pointer; font-size: 18px; padding: 4px; line-height: 1;
+  transition: color .15s;
+}
+.iv-rm:active { color: var(--danger); }
+
+/* ── GPS BANNER ──────────────────────────────── */
+.gps-banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 10px; font-size: 12px; margin-bottom: 10px;
+  border: 1px solid;
+}
+.gps-banner.wait { background: rgba(245,200,66,0.08); border-color: rgba(245,200,66,0.3); color: #c9a52a; }
+.gps-banner.ok   { background: var(--walk-dim); border-color: rgba(111,207,138,0.35); color: var(--walk); }
+.gps-banner.err  { background: var(--danger-dim); border-color: rgba(255,68,68,0.3); color: var(--danger); }
+.gps-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.gps-banner.wait .gps-dot { background: #c9a52a; }
+.gps-banner.ok   .gps-dot { background: var(--walk); animation: pulse 1.5s infinite; }
+.gps-banner.err  .gps-dot { background: var(--danger); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── WORKOUT SCREEN ──────────────────────────── */
+.segment-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+  flex-shrink: 0; transition: background .4s ease;
+}
+.segment-bar.r { background: var(--run-dim); }
+.segment-bar.w { background: var(--walk-dim); }
+.seg-type-label {
+  font-family: var(--font-display); font-size: 32px; font-weight: 900;
+  letter-spacing: .06em; line-height: 1;
+}
+.segment-bar.r .seg-type-label { color: var(--run); }
+.segment-bar.w .seg-type-label { color: var(--walk); }
+.seg-next-txt { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.seg-count-box { text-align: right; }
+.seg-count-num {
+  font-family: var(--font-display); font-size: 22px;
+  font-weight: 800; color: var(--text); line-height: 1;
+}
+.seg-count-lbl { font-size: 10px; color: var(--text3); letter-spacing: .06em; }
+
+/* ── ARC TIMER ───────────────────────────────── */
+.arc-area {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 16px 20px 12px; flex-shrink: 0;
+}
+.arc-wrap { position: relative; width: 200px; height: 200px; }
+.arc-wrap svg { transform: rotate(-90deg); display: block; }
+.arc-center {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); text-align: center; pointer-events: none;
+}
+.arc-main-time {
+  font-family: var(--font-display); font-size: 46px; font-weight: 900;
+  color: var(--text); letter-spacing: .01em; line-height: 1;
+}
+.arc-sub {
+  font-size: 11px; color: var(--text3); margin-top: 4px;
+  font-weight: 500; letter-spacing: .04em;
+}
+
+/* ── METRIC STRIP ────────────────────────────── */
+.metric-strip {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px; padding: 0 20px; margin-bottom: 10px; flex-shrink: 0;
+}
+.metric-box {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 8px; text-align: center;
+}
+.metric-box .mv {
+  font-family: var(--font-display); font-size: 22px;
+  font-weight: 800; color: var(--text); line-height: 1;
+}
+.metric-box .ml { font-size: 10px; color: var(--text3); margin-top: 3px; letter-spacing: .04em; }
+
+/* ── PROGRESS BAR ────────────────────────────── */
+.prog-area { padding: 0 20px; flex-shrink: 0; }
+.prog-track {
+  width: 100%; height: 4px; background: var(--bg4);
+  border-radius: 2px; overflow: hidden; margin-bottom: 5px;
+}
+.prog-fill { height: 100%; background: var(--run); border-radius: 2px; transition: width 1s linear; }
+.prog-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text3); }
+
+/* ── SEGMENT DOTS ────────────────────────────── */
+.dots-row {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  justify-content: center; padding: 10px 20px 6px; flex-shrink: 0;
+}
+.seg-dot { height: 6px; border-radius: 3px; flex-shrink: 0; }
+.seg-dot.r { background: var(--run); width: 22px; }
+.seg-dot.w { background: var(--walk); width: 16px; }
+.seg-dot.done { opacity: .2; }
+.seg-dot.active { box-shadow: 0 0 6px currentColor; }
+
+/* ── ROUTE CANVAS ────────────────────────────── */
+.route-wrap {
+  flex: 1; margin: 6px 20px 0; min-height: 60px; max-height: 100px;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; position: relative;
+  flex-shrink: 0;
+}
+.route-wrap canvas { width: 100%; height: 100%; display: block; }
+.route-lbl {
+  position: absolute; bottom: 5px; right: 8px;
+  font-size: 9px; color: var(--text3); letter-spacing: .06em;
+}
+.route-placeholder {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  font-size: 11px; color: var(--text3); text-align: center; line-height: 1.6;
+}
+
+/* ── WORKOUT BOTTOM BAR ──────────────────────── */
+.workout-bottom {
+  display: flex; gap: 8px; padding: 10px 20px 20px; flex-shrink: 0;
+  border-top: 1px solid var(--border);
+}
+.workout-bottom button { flex: 1; margin: 0; }
+
+/* ── GPS WARNING BANNER (workout screen) ─────── */
+.gps-warning {
+  display: none;
+  align-items: center; gap: 10px;
+  padding: 9px 20px;
+  background: rgba(245,200,66,0.07);
+  border-bottom: 1px solid rgba(245,200,66,0.25);
+  flex-shrink: 0;
+}
+.gps-warning.visible { display: flex; }
+.gps-warning-icon { font-size: 15px; flex-shrink: 0; }
+.gps-warning-txt { font-size: 12px; color: #c9a52a; line-height: 1.4; flex: 1; }
+.gps-warning-txt strong { font-weight: 700; display: block; margin-bottom: 1px; }
+
+/* ── ALERT FLASH ─────────────────────────────── */
+.alert-flash {
+  position: absolute; top: 0; left: 0; right: 0;
+  padding: 14px 20px; text-align: center;
+  font-family: var(--font-display); font-size: 16px; font-weight: 800;
+  letter-spacing: .06em; z-index: 100;
+  transform: translateY(-100%); transition: transform .28s cubic-bezier(.34,1.56,.64,1);
+  border-bottom: 1px solid;
+}
+.alert-flash.show { transform: translateY(0); }
+.alert-flash.r { background: var(--run-dim); color: var(--run); border-color: rgba(59,158,255,0.3); }
+.alert-flash.w { background: var(--walk-dim); color: var(--walk); border-color: rgba(111,207,138,0.3); }
+
+/* ── SUMMARY SCREEN ──────────────────────────── */
+.summary-hero {
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  padding: 24px 20px 20px; flex-shrink: 0; text-align: center;
+}
+.summary-dist {
+  font-family: var(--font-display); font-size: 72px; font-weight: 900;
+  color: var(--text); letter-spacing: -.01em; line-height: 1;
+}
+.summary-dist span { font-size: 28px; color: var(--text2); }
+.summary-tag { font-size: 13px; color: var(--text2); margin-top: 6px; }
+
+.seg-hist-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; background: var(--bg2);
+  border: 1px solid var(--border); border-radius: 10px; margin-bottom: 5px;
+}
+.seg-hist-time {
+  font-family: var(--font-display); font-size: 16px;
+  font-weight: 700; color: var(--text2); min-width: 44px; text-align: right;
+}
+
+.save-input {
+  width: 100%; padding: 12px 14px;
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 10px; color: var(--text); font-size: 14px;
+  font-family: var(--font-body); outline: none; margin-bottom: 8px;
+  transition: border-color .15s;
+}
+.save-input:focus { border-color: var(--run); }
+.saved-toast {
+  display: none; text-align: center; padding: 12px;
+  background: var(--walk-dim); border: 1px solid rgba(111,207,138,0.35);
+  border-radius: 10px; color: var(--walk); font-size: 13px; margin-top: 8px;
+}
+
+/* ── BOTTOM NAV ──────────────────────────────── */
+.bottom-nav {
+  display: flex; border-top: 1px solid var(--border);
+  flex-shrink: 0; background: var(--bg);
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 10px 0; background: none; border: none;
+  cursor: pointer; gap: 3px; transition: opacity .15s;
+}
+.nav-btn:active { opacity: .7; }
+.nav-btn .nav-icon { font-size: 20px; color: var(--text3); }
+.nav-btn .nav-lbl { font-size: 10px; color: var(--text3); letter-spacing: .04em; }
+.nav-btn.active .nav-icon, .nav-btn.active .nav-lbl { color: var(--run); }
+
+/* ── TICKER (top total clock during workout) ── */
+.tot-badge {
+  font-family: var(--font-display); font-size: 16px;
+  font-weight: 800; color: var(--text); letter-spacing: .04em;
+}
+
+/* ── WAKE LOCK PILL ──────────────────────────── */
+.wakelock-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 20px; font-size: 11px;
+  font-weight: 600; letter-spacing: .04em; border: 1px solid;
+  transition: all .3s ease;
+}
+.wakelock-pill.active {
+  background: rgba(111,207,138,0.1); color: var(--walk);
+  border-color: rgba(111,207,138,0.35);
+}
+.wakelock-pill.inactive {
+  background: rgba(255,68,68,0.08); color: #ff6666;
+  border-color: rgba(255,68,68,0.25);
+}
+.wakelock-pill .wl-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+}
+.wakelock-pill.active .wl-dot { animation: pulse 1.8s infinite; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="alert-flash" id="alertFlash"></div>
+
+  <!-- ══════════ HOME ══════════ -->
+  <div class="screen active" id="s-home">
+    <div class="topbar">
+      <div class="topbar-logo">STRIDE<span>SYNC</span></div>
+      <div class="topbar-date" id="h-date"></div>
+    </div>
+    <div class="scroll">
+      <div class="section-label">Today's activity</div>
+      <div class="stat-grid">
+        <div class="stat-card accent-run">
+          <div class="label">STEPS</div>
+          <div class="value">6,240</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">DISTANCE</div>
+          <div class="value">4.2<span class="unit">km</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="label">CALORIES</div>
+          <div class="value">312<span class="unit">kcal</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="label">ACTIVE</div>
+          <div class="value">38<span class="unit">min</span></div>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="goTo('s-setup')">▶ START NEW WORKOUT</button>
+      <div class="section-label">Recent activities</div>
+      <div id="act-list">
+        <div class="act-item">
+          <div class="act-icon r">🏃</div>
+          <div class="act-info"><div class="act-name">Interval run</div><div class="act-meta">Yesterday · 5 segments</div></div>
+          <div class="act-dist">3.8<span style="font-size:12px;color:var(--text2)">km</span></div>
+        </div>
+        <div class="act-item">
+          <div class="act-icon w">🚶</div>
+          <div class="act-info"><div class="act-name">Morning walk</div><div class="act-meta">2 days ago · 1 segment</div></div>
+          <div class="act-dist">2.1<span style="font-size:12px;color:var(--text2)">km</span></div>
+        </div>
+        <div class="act-item">
+          <div class="act-icon r">🏃</div>
+          <div class="act-info"><div class="act-name">5K interval session</div><div class="act-meta">4 days ago · 8 segments</div></div>
+          <div class="act-dist">5.0<span style="font-size:12px;color:var(--text2)">km</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <button class="nav-btn active"><div class="nav-icon">🏠</div><div class="nav-lbl">HOME</div></button>
+      <button class="nav-btn" onclick="goTo('s-setup')"><div class="nav-icon">▶</div><div class="nav-lbl">RUN</div></button>
+      <button class="nav-btn"><div class="nav-icon">📊</div><div class="nav-lbl">HISTORY</div></button>
+      <button class="nav-btn"><div class="nav-icon">⚙</div><div class="nav-lbl">SETTINGS</div></button>
+    </div>
+  </div>
+
+  <!-- ══════════ SETUP ══════════ -->
+  <div class="screen" id="s-setup">
+    <div class="topbar">
+      <button class="topbar-back" onclick="goTo('s-home')">← Back</button>
+      <div class="topbar-title">INTERVAL SETUP</div>
+      <div style="width:60px"></div>
+    </div>
+    <div class="scroll">
+      <div class="section-label">GPS status</div>
+      <div class="gps-banner wait" id="gps-banner">
+        <div class="gps-dot"></div>
+        <span id="gps-txt">Tap below to enable real GPS distance tracking</span>
+      </div>
+      <button class="btn-secondary" onclick="requestGPS()" id="gps-btn">📍 Request GPS access</button>
+
+      <div class="section-label">Target distance</div>
+      <div class="field-row">
+        <label>Total target</label>
+        <input type="number" id="targetDist" value="5" min="0.1" step="0.1" style="max-width:100px"/>
+        <span style="font-size:13px;color:var(--text2)">km</span>
+      </div>
+
+      <div class="section-label">Repeat cycle</div>
+      <div class="field-row">
+        <label>Times to repeat</label>
+        <input type="number" id="repeatCount" value="1" min="1" max="20" style="max-width:80px"/>
+      </div>
+
+      <div class="section-label">Intervals</div>
+      <div id="iv-list"></div>
+      <div class="add-row">
+        <select id="nType">
+          <option value="run">🏃 Run</option>
+          <option value="walk">🚶 Walk</option>
+        </select>
+        <input type="number" id="nDist" value="1000" min="50" step="50" placeholder="meters"/>
+        <button class="add-btn" onclick="addIv()">+</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Add each segment individually. They play in order, repeated as set above.</div>
+
+      <button class="btn-primary" onclick="startWorkout()" style="margin-top:18px">▶ BEGIN WORKOUT</button>
+    </div>
+  </div>
+
+  <!-- ══════════ WORKOUT ══════════ -->
+  <div class="screen" id="s-workout">
+    <div class="topbar">
+      <div class="topbar-logo" style="font-size:16px">STRIDE<span>SYNC</span></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="wakelock-pill inactive" id="wl-pill">
+          <div class="wl-dot"></div>
+          <span id="wl-txt">SCREEN</span>
+        </div>
+        <div class="tot-badge" id="tot-clock">00:00</div>
+      </div>
+    </div>
+
+    <div class="segment-bar r" id="seg-bar">
+      <div>
+        <div class="seg-type-label" id="seg-type">RUN</div>
+        <div class="seg-next-txt" id="seg-next">Next: Walk 300m</div>
+      </div>
+      <div class="seg-count-box">
+        <div class="seg-count-num" id="seg-count">1/4</div>
+        <div class="seg-count-lbl">SEGMENT</div>
+      </div>
+    </div>
+
+    <!-- GPS not granted warning — shown/hidden by JS -->
+    <div class="gps-warning" id="gps-warning">
+      <div class="gps-warning-icon">⚠️</div>
+      <div class="gps-warning-txt">
+        <strong>GPS permission not granted</strong>
+        Distance and pace will not be tracked. Timer still runs accurately.
+      </div>
+    </div>
+
+    <div class="arc-area">
+      <div class="arc-wrap" id="arc-wrap">
+        <svg width="200" height="200" viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="88" fill="none" stroke="#1a1a1a" stroke-width="10"/>
+          <circle id="arc-circle" cx="100" cy="100" r="88" fill="none"
+            stroke="var(--run)" stroke-width="10" stroke-linecap="round"
+            stroke-dasharray="553" stroke-dashoffset="553"
+            style="transition:stroke-dashoffset 1s linear, stroke .4s ease"/>
+        </svg>
+        <div class="arc-center">
+          <div class="arc-main-time" id="seg-clock">0:00</div>
+          <div class="arc-sub" id="seg-dist-lbl">0 / 1000m</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="metric-strip">
+      <div class="metric-box">
+        <div class="mv" id="m-pace">—</div>
+        <div class="ml">PACE /KM</div>
+      </div>
+      <div class="metric-box">
+        <div class="mv" id="m-dist">0.00</div>
+        <div class="ml">KM TOTAL</div>
+      </div>
+      <div class="metric-box">
+        <div class="mv" id="m-cal">0</div>
+        <div class="ml">KCAL</div>
+      </div>
+    </div>
+
+    <div class="prog-area">
+      <div class="prog-track">
+        <div class="prog-fill" id="prog-fill" style="width:0%"></div>
+      </div>
+      <div class="prog-labels">
+        <span>0 km</span>
+        <span id="prog-target">5.0 km target</span>
+      </div>
+    </div>
+
+    <div class="dots-row" id="seg-dots"></div>
+
+    <div class="route-wrap" id="route-wrap">
+      <canvas id="route-canvas"></canvas>
+      <div class="route-placeholder" id="route-placeholder">Route will appear<br/>as you move</div>
+      <div class="route-lbl">LIVE ROUTE</div>
+    </div>
+
+    <div class="workout-bottom">
+      <button class="btn-secondary" id="pauseBtn" onclick="togglePause()">⏸ PAUSE</button>
+      <button class="btn-danger" onclick="endWorkout()">■ END</button>
+    </div>
+  </div>
+
+  <!-- ══════════ SUMMARY ══════════ -->
+  <div class="screen" id="s-summary">
+    <div class="topbar">
+      <div class="topbar-logo" style="font-size:16px">STRIDE<span>SYNC</span></div>
+      <div style="font-size:12px;color:var(--text3)">SUMMARY</div>
+    </div>
+    <div class="summary-hero">
+      <div class="summary-dist" id="s-dist">0.00<span> km</span></div>
+      <div class="summary-tag" id="s-tag">Great effort!</div>
+    </div>
+    <div class="scroll" style="padding-top:14px">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="label">DURATION</div><div class="value" id="s-dur" style="font-size:24px">0:00</div></div>
+        <div class="stat-card"><div class="label">AVG PACE</div><div class="value" id="s-pace" style="font-size:24px">—</div></div>
+        <div class="stat-card"><div class="label">CALORIES</div><div class="value" id="s-cal">0</div></div>
+        <div class="stat-card"><div class="label">GPS PTS</div><div class="value" id="s-gps">0</div></div>
+      </div>
+
+      <div class="section-label">Route</div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);height:130px;overflow:hidden;position:relative;margin-bottom:14px">
+        <canvas id="sum-canvas" style="width:100%;height:100%;display:block"></canvas>
+        <div id="sum-route-msg" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;color:var(--text3);text-align:center">No GPS route recorded</div>
+      </div>
+
+      <div class="section-label">Segment log</div>
+      <div id="seg-hist"></div>
+
+      <div class="section-label">Save activity</div>
+      <input class="save-input" type="text" id="act-name" placeholder="Activity name (e.g. Morning intervals)"/>
+      <button class="btn-primary" onclick="saveActivity()">☁ SAVE TO CLOUD</button>
+      <div class="saved-toast" id="saved-toast"></div>
+      <button class="btn-secondary" onclick="goTo('s-home')" style="margin-top:8px">← Back to home</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════ */
+const intervals=[];let wSegs=[],curSeg=0,segEl=0,totEl=0,totDistM=0,targetM=5000,paused=false,wTimer=null,segHist=[],gpsWatcher=null,gpsPoints=[],gpsOk=false,segDistM=0,lastLat=null,lastLon=null;
+
+/* ── WAKE LOCK ───────────────────────────────── */
+let wakeLock=null;
+
+async function acquireWakeLock(){
+  if(!('wakeLock' in navigator)){
+    setWLPill(false,'NO SUPPORT');return;
+  }
+  try{
+    wakeLock=await navigator.wakeLock.request('screen');
+    setWLPill(true,'SCREEN ON');
+    wakeLock.addEventListener('release',()=>{
+      // Released by OS (e.g. battery saver kicked in)
+      setWLPill(false,'RELEASED');
+      wakeLock=null;
+    });
+  }catch(err){
+    setWLPill(false,'DENIED');
+  }
+}
+
+async function releaseWakeLock(){
+  if(wakeLock){
+    await wakeLock.release();
+    wakeLock=null;
+  }
+  setWLPill(false,'SCREEN');
+}
+
+function setWLPill(on,label){
+  const pill=document.getElementById('wl-pill');
+  const txt=document.getElementById('wl-txt');
+  if(!pill||!txt)return;
+  pill.className='wakelock-pill '+(on?'active':'inactive');
+  txt.textContent=label;
+}
+
+// Re-acquire if OS released it when tab becomes visible again
+document.addEventListener('visibilitychange',async()=>{
+  if(wakeLock!==null)return; // still held
+  if(document.visibilityState==='visible'&&wTimer){
+    // Workout is still running — re-acquire
+    await acquireWakeLock();
+  }
+});
+
+/* ══════════════════════════════════════════════
+   NAV
+══════════════════════════════════════════════ */
+function goTo(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+document.getElementById('h-date').textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+
+/* ══════════════════════════════════════════════
+   GPS
+══════════════════════════════════════════════ */
+function haversine(la1,lo1,la2,lo2){
+  const R=6371000,dL=(la2-la1)*Math.PI/180,dO=(lo2-lo1)*Math.PI/180;
+  const a=Math.sin(dL/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dO/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function requestGPS(){
+  if(!navigator.geolocation){
+    setBanner('err','GPS not supported in this browser');return;
+  }
+  document.getElementById('gps-txt').textContent='Requesting GPS…';
+  navigator.geolocation.getCurrentPosition(pos=>{
+    gpsOk=true;lastLat=pos.coords.latitude;lastLon=pos.coords.longitude;
+    setBanner('ok','GPS active — real distance tracking enabled');
+    document.getElementById('gps-btn').style.display='none';
+  },()=>{
+    setBanner('err','GPS denied — distance and pace will not be tracked');
+  },{enableHighAccuracy:true,timeout:10000});
+}
+
+function setBanner(type,msg){
+  const b=document.getElementById('gps-banner');
+  b.className='gps-banner '+type;
+  document.getElementById('gps-txt').textContent=msg;
+}
+
+function onGPS(pos){
+  const {latitude:lat,longitude:lon,accuracy}=pos.coords;
+  if(accuracy>35)return;
+  if(lastLat!==null){
+    const d=haversine(lastLat,lastLon,lat,lon);
+    if(d>0.5&&d<50){totDistM+=d;segDistM+=d;}
+  }
+  lastLat=lat;lastLon=lon;
+  gpsPoints.push({lat,lon});
+  document.getElementById('m-dist').textContent=(totDistM/1000).toFixed(2);
+  if(gpsPoints.length>1){
+    document.getElementById('route-placeholder').style.display='none';
+    drawRoute('route-canvas');
+  }
+}
+
+/* ══════════════════════════════════════════════
+   INTERVAL LIST
+══════════════════════════════════════════════ */
+function addIv(){
+  const type=document.getElementById('nType').value;
+  const dist=parseInt(document.getElementById('nDist').value)||1000;
+  intervals.push({type,dist});renderIvs();
+}
+function removeIv(i){intervals.splice(i,1);renderIvs();}
+function renderIvs(){
+  const el=document.getElementById('iv-list');
+  if(!intervals.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:10px 0;text-align:center">No intervals yet — add below</div>';
+    return;
+  }
+  el.innerHTML=intervals.map((iv,i)=>`
+    <div class="iv-item">
+      <span class="iv-badge ${iv.type[0]}">${iv.type.toUpperCase()}</span>
+      <span class="iv-dist">${iv.dist>=1000?(iv.dist/1000).toFixed(1)+' km':iv.dist+' m'}</span>
+      <button class="iv-rm" onclick="removeIv(${i})">✕</button>
+    </div>`).join('');
+}
+renderIvs();
+addIv();
+document.getElementById('nType').value='walk';document.getElementById('nDist').value='300';addIv();
+document.getElementById('nType').value='run';document.getElementById('nDist').value='1000';
+
+/* ══════════════════════════════════════════════
+   WORKOUT
+══════════════════════════════════════════════ */
+function buildSegs(){
+  const r=parseInt(document.getElementById('repeatCount').value)||1;
+  let s=[];for(let i=0;i<r;i++)intervals.forEach(iv=>s.push({...iv}));return s;
+}
+
+function startWorkout(){
+  if(!intervals.length){alert('Add at least one interval first.');return;}
+  wSegs=buildSegs();targetM=parseFloat(document.getElementById('targetDist').value)*1000||5000;
+  curSeg=0;segEl=0;totEl=0;totDistM=0;paused=false;segHist=[];
+  gpsPoints=[];lastLat=null;lastLon=null;segDistM=0;
+  if(gpsOk)gpsWatcher=navigator.geolocation.watchPosition(onGPS,null,{enableHighAccuracy:true,maximumAge:1000,timeout:6000});
+  goTo('s-workout');
+  // Show GPS warning banner if GPS wasn't granted
+  const gpsWarn=document.getElementById('gps-warning');
+  if(gpsOk){ gpsWarn.classList.remove('visible'); }
+  else      { gpsWarn.classList.add('visible'); }
+  renderDots();updateSegBar();
+  document.getElementById('prog-target').textContent=(targetM/1000).toFixed(1)+' km target';
+  document.getElementById('pauseBtn').textContent='⏸ PAUSE';
+  document.getElementById('route-placeholder').style.display='block';
+  clearRouteCanvas('route-canvas');
+  if(wTimer)clearInterval(wTimer);
+  wTimer=setInterval(tick,1000);
+  document.getElementById('arc-circle').setAttribute('stroke-dashoffset','553');
+  acquireWakeLock();
+}
+
+function renderDots(){
+  document.getElementById('seg-dots').innerHTML=wSegs.map((iv,i)=>`
+    <div class="seg-dot ${iv.type[0]} ${i<curSeg?'done':''} ${i===curSeg?'active':''}"></div>`).join('');
+}
+
+function updateSegBar(){
+  const s=wSegs[curSeg];
+  const bar=document.getElementById('seg-bar');
+  bar.className='segment-bar '+s.type[0];
+  document.getElementById('seg-type').textContent=s.type.toUpperCase();
+  const nx=wSegs[curSeg+1];
+  document.getElementById('seg-next').textContent=nx?`Next: ${nx.type} ${nx.dist>=1000?(nx.dist/1000).toFixed(1)+'km':nx.dist+'m'}`:'Last segment!';
+  document.getElementById('seg-count').textContent=`${curSeg+1}/${wSegs.length}`;
+  document.getElementById('arc-circle').setAttribute('stroke',s.type==='run'?'var(--run)':'var(--walk)');
+}
+
+function fmt(s){const m=Math.floor(s/60),sc=s%60;return`${m}:${sc.toString().padStart(2,'0')}`;}
+
+function tick(){
+  if(paused)return;
+  segEl++;totEl++;
+  const s=wSegs[curSeg];
+
+  // ── NO fake distance when GPS is not granted ──────────────────────────────
+  // totDistM and segDistM are only ever updated by real GPS pings (onGPS).
+  // Without GPS the timer runs, but distance/pace/progress stay at 0/—.
+
+  document.getElementById('seg-clock').textContent=fmt(segEl);
+  document.getElementById('tot-clock').textContent=fmt(totEl);
+
+  if(gpsOk){
+    // Distance label: live metres covered in this segment vs target
+    const shown=Math.min(Math.round(segDistM),s.dist);
+    document.getElementById('seg-dist-lbl').textContent=`${shown} / ${s.dist}m`;
+    // Arc progress by real distance
+    const pct=Math.min(segDistM/s.dist,1);
+    document.getElementById('arc-circle').setAttribute('stroke-dashoffset',553*(1-pct));
+  } else {
+    // Arc counts time only — gives visual feedback without lying about distance
+    const pct=Math.min(segEl/(segEl+30),0.98); // slow fill, never completes on its own
+    document.getElementById('arc-circle').setAttribute('stroke-dashoffset',553*(1-pct));
+    document.getElementById('seg-dist-lbl').textContent='GPS required';
+  }
+
+  const paceS=totDistM>0?Math.round(totEl/(totDistM/1000)):0;
+  document.getElementById('m-pace').textContent=paceS>0?fmt(paceS):'—';
+  document.getElementById('m-dist').textContent=gpsOk?(totDistM/1000).toFixed(2):'—';
+  document.getElementById('m-cal').textContent=Math.round(totEl*0.13); // calories from time is fine
+  document.getElementById('prog-fill').style.width=gpsOk?Math.min((totDistM/targetM)*100,100)+'%':'0%';
+
+  // Segment advance: only by real GPS distance — never auto-advance without it
+  if(gpsOk&&(segDistM>=s.dist||totDistM>=targetM)){
+    segHist.push({type:s.type,dist:s.dist,duration:segEl});
+    curSeg++;segEl=0;segDistM=0;
+    if(curSeg>=wSegs.length||totDistM>=targetM){endWorkout();return;}
+    renderDots();updateSegBar();
+    document.getElementById('arc-circle').setAttribute('stroke-dashoffset','553');
+    showAlert(wSegs[curSeg]);
+  }
+}
+
+function showAlert(seg){
+  const el=document.getElementById('alertFlash');
+  el.className='alert-flash '+seg.type[0];
+  el.textContent=seg.type==='run'?`▶ RUN ${seg.dist>=1000?(seg.dist/1000).toFixed(1)+'KM':seg.dist+'M'} — GO!`:`◼ WALK ${seg.dist}M — RECOVER`;
+  el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3500);
+}
+
+function togglePause(){
+  paused=!paused;
+  document.getElementById('pauseBtn').textContent=paused?'▶ RESUME':'⏸ PAUSE';
+  // Release screen lock while paused to save battery, re-acquire on resume
+  if(paused){ releaseWakeLock(); }
+  else { acquireWakeLock(); }
+}
+
+function endWorkout(){
+  clearInterval(wTimer);
+  releaseWakeLock();
+  if(gpsWatcher&&navigator.geolocation)navigator.geolocation.clearWatch(gpsWatcher);
+  document.getElementById('s-dist').innerHTML=(totDistM/1000).toFixed(2)+'<span> km</span>';
+  const paceS=totDistM>0?Math.round(totEl/(totDistM/1000)):0;
+  document.getElementById('s-pace').textContent=paceS>0?fmt(paceS):' — ';
+  document.getElementById('s-dur').textContent=fmt(totEl);
+  document.getElementById('s-cal').textContent=Math.round(totEl*0.13);
+  document.getElementById('s-gps').textContent=gpsPoints.length;
+  const tags=['Great effort!','You crushed it!','Keep it up!','Strong finish!','One step at a time!'];
+  document.getElementById('s-tag').textContent=tags[Math.floor(Math.random()*tags.length)];
+  document.getElementById('seg-hist').innerHTML=segHist.map(s=>`
+    <div class="seg-hist-item">
+      <span class="iv-badge ${s.type[0]}">${s.type.toUpperCase()}</span>
+      <span style="flex:1;font-size:13px;color:var(--text)">${s.dist>=1000?(s.dist/1000).toFixed(1)+' km':s.dist+' m'}</span>
+      <span class="seg-hist-time">${fmt(s.duration)}</span>
+    </div>`).join('')||'<div style="font-size:12px;color:var(--text3)">No segments completed</div>';
+  document.getElementById('saved-toast').style.display='none';
+  goTo('s-summary');
+  if(gpsPoints.length>1){
+    document.getElementById('sum-route-msg').style.display='none';
+    setTimeout(()=>drawRoute('sum-canvas'),80);
+  }
+}
+
+function saveActivity(){
+  const name=document.getElementById('act-name').value||'Interval workout';
+  const record={name,date:new Date().toISOString(),distanceKm:parseFloat((totDistM/1000).toFixed(2)),durationSec:totEl,calories:Math.round(totEl*0.13),avgPaceSec:totDistM>0?Math.round(totEl/(totDistM/1000)):null,targetDistM:targetM,segments:segHist,route:gpsPoints.map(p=>({lat:+p.lat.toFixed(6),lon:+p.lon.toFixed(6)}))};
+  console.log('POST /api/activities',record);
+  const toast=document.getElementById('saved-toast');
+  toast.style.display='block';
+  toast.textContent=`✓ Saved "${name}" — ${record.distanceKm} km · ${record.route.length} GPS pts`;
+  setTimeout(()=>{toast.style.display='none';goTo('s-home');},2200);
+}
+
+/* ══════════════════════════════════════════════
+   ROUTE CANVAS
+══════════════════════════════════════════════ */
+function drawRoute(canvasId){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas||gpsPoints.length<2)return;
+  const w=canvas.parentElement.clientWidth,h=canvas.parentElement.clientHeight;
+  canvas.width=w;canvas.height=h;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,w,h);
+  const lats=gpsPoints.map(p=>p.lat),lons=gpsPoints.map(p=>p.lon);
+  const minLa=Math.min(...lats),maxLa=Math.max(...lats),minLo=Math.min(...lons),maxLo=Math.max(...lons);
+  const pad=20;
+  const ranLa=maxLa-minLa||0.001,ranLo=maxLo-minLo||0.001;
+  const sc=Math.min((w-pad*2)/ranLo,(h-pad*2)/ranLa);
+  const ox=(w-(ranLo)*sc)/2,oy=(h-(ranLa)*sc)/2;
+  const px=lo=>ox+(lo-minLo)*sc;
+  const py=la=>h-oy-(la-minLa)*sc;
+  ctx.strokeStyle='#3b9eff';ctx.lineWidth=2.5;ctx.lineJoin='round';ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(px(gpsPoints[0].lon),py(gpsPoints[0].lat));
+  gpsPoints.slice(1).forEach(p=>ctx.lineTo(px(p.lon),py(p.lat)));
+  ctx.stroke();
+  ctx.fillStyle='#6fcf8a';ctx.beginPath();ctx.arc(px(gpsPoints[0].lon),py(gpsPoints[0].lat),5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#ff4444';ctx.beginPath();ctx.arc(px(gpsPoints[gpsPoints.length-1].lon),py(gpsPoints[gpsPoints.length-1].lat),5,0,Math.PI*2);ctx.fill();
+}
+function clearRouteCanvas(id){
+  const c=document.getElementById(id);if(!c)return;
+  const w=c.parentElement.clientWidth,h=c.parentElement.clientHeight;
+  c.width=w;c.height=h;c.getContext('2d').clearRect(0,0,w,h);
+}
+</script>
+</body>
+</html>
