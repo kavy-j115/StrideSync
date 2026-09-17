@@ -158,7 +158,11 @@ router.get('/', async (req, res) => {
     );
     res.json({ activities: result.rows });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch activities' });
+    console.error('Fetch activities error:', err);
+    res.status(500).json({
+      error: 'Failed to fetch activities',
+      detail: err.message
+    });
   }
 });
 
